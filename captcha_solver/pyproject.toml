@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "captcha-solver"
+version = "0.1.0"
+description = ""
+authors = ["hakuunabatata <emachadomartins1999@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+flask = "^3.0.3"
+openai-whisper = "^20231117"
+pillow = "^10.4.0"
+pytesseract = "^0.3.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
