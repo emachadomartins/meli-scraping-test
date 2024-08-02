@@ -1,5 +1,5 @@
 import { Injectable, StreamableFile } from '@nestjs/common';
-import { FileService } from 'src/services/file.service';
+import { FileService } from '../../services/file.service';
 
 @Injectable()
 export class ScreenshotService {
