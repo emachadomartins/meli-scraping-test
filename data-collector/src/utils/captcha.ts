@@ -1,23 +1,27 @@
-import { FileService } from 'src/services';
-import { RequestService } from '../services';
+import { FileService, RequestService } from '../services';
 
-export const resolveCaptcha = async (path: string, type: 'audio' | 'image') => {
-  const fileName = await FileService.readdir(path).then(
-    (files) => files.find(({ name }) => name.includes(`captcha_${type}`)).name,
+export const convertFile = async (
+  path: string,
+  fileName: string,
+  fileType: string,
+) => {
+  const _fileName = await FileService.readdir(path).then(
+    (files) =>
+      files.find(({ name }) => name.includes(`${fileName}_${fileType}`)).name,
   );
 
-  if (!fileName) throw new Error('No captcha file downloaded');
+  if (!_fileName) throw new Error('No file downloaded');
 
-  const filePath = [path, fileName].join('/');
+  const filePath = [path, _fileName].join('/');
 
   const file = await FileService.read(filePath);
 
-  const [, extension] = fileName.split('.');
+  const [, extension] = _fileName.split('.');
 
   const formData = new FormData();
 
   formData.append('file_name', fileName);
-  formData.append('file_type', type);
+  formData.append('file_type', fileType);
   formData.append('file', new Blob([file]), fileName);
 
   const response = await RequestService.send<{ captcha: string }>({
@@ -32,6 +36,6 @@ export const resolveCaptcha = async (path: string, type: 'audio' | 'image') => {
   return {
     resolution: response,
     file,
-    fileName: `captcha_${type}.${extension}`,
+    fileName: `${fileName}_${fileType}.${extension}`,
   };
 };

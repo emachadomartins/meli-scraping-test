@@ -11,7 +11,7 @@ import {
   ERROR_STATUS,
   isQuerySelector,
   normalize,
-  resolveCaptcha,
+  convertFile,
 } from '../utils';
 import { FileService } from './file.service';
 
@@ -413,7 +413,7 @@ export class BrowserService {
 
     await this.wait(2000);
 
-    const { resolution, file, fileName } = await resolveCaptcha(
+    const { resolution, file, fileName } = await convertFile(
       this.resultPath,
       type,
     );

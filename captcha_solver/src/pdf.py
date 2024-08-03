@@ -1,12 +1,15 @@
+import os
+from uuid import uuid4 as uuid
+
 import pytesseract
 from pdf2image import convert_from_path
 
-pdf_path = 'input/file.pdf'
 
-pages = convert_from_path(pdf_path, 500)
+def convert_pdf(file, language):
+    id = uuid()
+    path = os.path.join('input', f'file-{id}.pdf')
+    file.save(path)
 
-for pageNum, imgBlob in enumerate(pages):
-    text = pytesseract.image_to_string(imgBlob, lang='eng')
+    pages = convert_from_path(path, 500)
 
-    with open(f'{pdf_path[:-4]}_page{pageNum}.txt', 'w') as the_file:
-        the_file.write(text)
+    return [pytesseract.image_to_string(page, lang=language) for page in pages]

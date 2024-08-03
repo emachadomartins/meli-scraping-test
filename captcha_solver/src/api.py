@@ -1,6 +1,7 @@
 from flask import Flask, request, json
 
 from src.captcha import solve_captcha
+from src.pdf import convert_pdf
 
 app = Flask(__name__)
 
@@ -29,6 +30,31 @@ def captcha_solver():
 
         return {
             'captcha': solve_captcha(file=file, file_type=file_type, file_name=file_name)
+        }, 200
+    except Exception as e:
+        return {
+            'error': str(e)
+        }, 500
+
+
+@app.route('/pdf', methods=['PUT'])
+def pdf_converter():
+    try:
+        print(request)
+        if not 'file' in request.files:
+            raise Exception('No file provided')
+
+        if not 'file_type' in request.form:
+            raise Exception('No file_type provided')
+
+        if not 'file_name' in request.form:
+            raise Exception('No file_name provided')
+
+        file_name = request.form['file_name']
+        file = request.files['file']
+
+        return {
+            'result': convert_pdf(file=file, file_name=file_name)
         }, 200
     except Exception as e:
         return {

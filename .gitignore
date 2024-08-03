@@ -1,9 +1,9 @@
 **/node_modules/*
 **/__pycache__/*
+**/dist/*
 **/input/*
 **/output/*
-!**/input/.gitkeep
-!**/output/.gitkeep
+!**/input/*.gitkeep
+!**/output/*.gitkeep
 **/yarn.lock
 **/poetry.lock
-**/dist/*
