@@ -5,10 +5,15 @@ import {
   Page,
   PuppeteerLifeCycleEvent,
 } from 'puppeteer';
-import { FileService } from './file.service';
-import { Result, Step } from '../types';
 import { v4 as uuid } from 'uuid';
-import { ERROR_STATUS, isQuerySelector, normalize } from '../utils';
+import { Result, Step } from '../types';
+import {
+  ERROR_STATUS,
+  isQuerySelector,
+  normalize,
+  resolveCaptcha,
+} from '../utils';
+import { FileService } from './file.service';
 
 export class BrowserService {
   #taskId: string;
@@ -31,7 +36,7 @@ export class BrowserService {
 
   private async getBrowser(): Promise<Browser> {
     if (this.#browser) return this.#browser;
-    const browser = await launch({});
+    const browser = await launch({ headless: false });
     this.#browser = browser;
     return browser;
   }
@@ -64,8 +69,7 @@ export class BrowserService {
     const result = {
       taskId: this.#taskId,
       url: this.#url,
-      complete: !!this.#browser,
-
+      complete: !this.#error,
       ...(this.#error
         ? { error: this.#error }
         : {
@@ -88,14 +92,14 @@ export class BrowserService {
         step: 'navigate',
         url: this.#url,
         critical: true,
+        wait: 1000,
       },
       ...steps,
+      { step: 'wait', time: 1000 },
       { step: 'export' },
     ];
 
     let i = 0;
-
-    console.log(_steps);
 
     for (const step of _steps) {
       try {
@@ -121,18 +125,33 @@ export class BrowserService {
           case 'export':
             await this.export(step.name);
             break;
+          case 'captcha':
+            await this.captcha(
+              step.type,
+              step.file_selector,
+              step.response_selector,
+            );
+            break;
+          case 'select':
+            await this.select(step.selector, step.option);
+            break;
+          case 'input':
+            await this.input(step.selector, step.value);
+            break;
+          case 'wait':
+            await this.wait(step.time);
+            break;
           default:
             throw new Error(`Invalid step provided`);
         }
         i++;
-        if (step.wait)
-          await new Promise((resolve) =>
-            setTimeout(() => resolve(null), step.wait),
-          );
+        if (step.wait) await this.wait(step.wait);
       } catch (error) {
         const err = error as Error;
         if (step.critical) {
-          this.#error = err.message ?? 'Unknown Error';
+          error = err.message ?? 'Unknown Error';
+          this.log(`Error in step [${i}-${step.step}]: ${error}`);
+          this.#error = error;
           break;
         }
 
@@ -293,8 +312,6 @@ export class BrowserService {
         `Info '${key}' already setted for previous steps with value '${JSON.stringify({ [key]: this.#info[key] })}'`,
       );
 
-    console.log(result);
-
     this.#info[key] = normalize(result);
   }
 
@@ -308,5 +325,107 @@ export class BrowserService {
     const index = await page.content();
 
     await this.exportFile(index, `${name}.html`);
+  }
+
+  private async select(selector: string, option: string) {
+    await this.evaluate(
+      (selector: string, useEval: boolean, value: string) => {
+        const element = (
+          useEval ? eval(selector) : document.querySelector(selector)
+        ) as HTMLSelectElement;
+
+        const option = Array.from(element.options).find(
+          (opt) =>
+            opt.getAttribute('value').includes(value) ||
+            opt.innerText.includes(value),
+        );
+
+        option.setAttribute('selected', 'selected');
+      },
+      selector,
+      isQuerySelector(selector),
+      option,
+    );
+  }
+
+  private async input(selector: string, value: string) {
+    await this.evaluate(
+      (selector: string, useEval: boolean, value: string) => {
+        const element = (
+          useEval ? eval(selector) : document.querySelector(selector)
+        ) as HTMLInputElement;
+
+        element.value = value;
+      },
+      selector,
+      isQuerySelector(selector),
+      value,
+    );
+  }
+
+  private async captcha(
+    type: 'image' | 'audio',
+    fileSelector: string,
+    responseSelector: string,
+  ) {
+    if (!type) throw new Error('No captcha type provided');
+    if (!fileSelector) throw new Error('No fileSelector provided');
+    if (!responseSelector) throw new Error('No responseSelector provided');
+
+    const page = await this.getPage();
+    const client = await page.createCDPSession();
+
+    await client.send('Page.setDownloadBehavior', {
+      behavior: 'allow',
+      downloadPath: this.resultPath,
+    });
+
+    const url = await page.evaluate(
+      (selector: string, useEval: boolean) => {
+        const element = (
+          useEval ? eval(selector) : document.querySelector(selector)
+        ) as HTMLElement;
+        if (!element) throw new Error(`Element '${selector}' not found`);
+        return element.getAttribute('src');
+      },
+      fileSelector,
+      isQuerySelector(fileSelector),
+    );
+
+    if (!url) throw new Error(`No captcha found in selector '${fileSelector}'`);
+    await this.wait(1000);
+
+    await page.evaluate(
+      (url: string, type: string) => {
+        const anchor = document.createElement('a') as HTMLElement;
+        anchor.setAttribute('download', `captcha_${type}`);
+        anchor.setAttribute(
+          'href',
+          url.startsWith(location.protocol)
+            ? url
+            : `${location.protocol}//${location.host}/${url}`,
+        );
+        anchor.click();
+      },
+      url,
+      type,
+    );
+
+    await this.wait(2000);
+
+    const { resolution, file, fileName } = await resolveCaptcha(
+      this.resultPath,
+      type,
+    );
+
+    await page.focus(responseSelector);
+    await page.keyboard.type(resolution.captcha);
+
+    await this.wait(1000);
+    await this.exportFile(file, fileName);
+  }
+
+  private async wait(time: number) {
+    await new Promise((resolve) => setTimeout(() => resolve(null), time));
   }
 }

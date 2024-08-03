@@ -29,5 +29,25 @@ interface ExportStep extends BaseStep {
     step: 'export';
     name?: string;
 }
-export type Step = ClickStep | ScrollStep | NavigateStep | InfoStep | ExportStep;
+interface SelectStep extends BaseStep {
+    step: 'select';
+    selector: string;
+    option: string;
+}
+interface InputStep extends BaseStep {
+    step: 'input';
+    selector: string;
+    value: string;
+}
+interface CaptchaStep extends BaseStep {
+    step: 'captcha';
+    type: 'audio' | 'image';
+    file_selector: string;
+    response_selector: string;
+}
+interface WaitStep extends BaseStep {
+    step: 'wait';
+    time: number;
+}
+export type Step = ClickStep | ScrollStep | NavigateStep | InfoStep | ExportStep | CaptchaStep | WaitStep | SelectStep | InputStep;
 export {};

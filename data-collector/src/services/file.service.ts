@@ -1,9 +1,20 @@
-import { createReadStream, mkdir, readFile, writeFile } from 'node:fs';
+import {
+  createReadStream,
+  mkdir,
+  readFile,
+  writeFile,
+  rename,
+  readdir,
+  rm,
+} from 'node:fs';
 import { promisify } from 'node:util';
 
 const mkdirAsync = promisify(mkdir);
 const writeFileAsync = promisify(writeFile);
 const readFileAsync = promisify(readFile);
+const renameAsync = promisify(rename);
+const readdirAsync = promisify(readdir);
+const rmAsync = promisify(rm);
 
 export class FileService {
   static async mkdir(path: string, recursive = true) {
@@ -15,7 +26,6 @@ export class FileService {
     file: string,
     content: string | Buffer,
   ) {
-    console.log(destination);
     return mkdirAsync(destination, { recursive: true }).then(() =>
       writeFileAsync([destination, file].join('/'), content),
     );
@@ -27,5 +37,21 @@ export class FileService {
 
   static stream(path: string) {
     return createReadStream(path);
+  }
+
+  static async move(path: string, newPath: string) {
+    return renameAsync(path, newPath);
+  }
+
+  static async readdir(path: string, recursive = true) {
+    return readdirAsync(path, {
+      recursive,
+      withFileTypes: true,
+      encoding: 'utf-8',
+    });
+  }
+
+  static async rm(path: string, recursive = true) {
+    return rmAsync(path, { recursive });
   }
 }

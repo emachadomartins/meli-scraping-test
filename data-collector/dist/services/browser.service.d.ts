@@ -17,4 +17,8 @@ export declare class BrowserService {
     private navigate;
     private getInfo;
     private export;
+    private select;
+    private input;
+    private captcha;
+    private wait;
 }

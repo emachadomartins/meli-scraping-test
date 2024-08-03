@@ -4,3 +4,6 @@
 **/output/*
 !**/input/.gitkeep
 !**/output/.gitkeep
+**/yarn.lock
+**/poetry.lock
+**/dist/*

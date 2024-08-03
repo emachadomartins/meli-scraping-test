@@ -1,4 +1,6 @@
-from flask import Flask, request
+from flask import Flask, request, json
+
+from src.captcha import solve_captcha
 
 app = Flask(__name__)
 
@@ -11,22 +13,22 @@ def health_check():
 @app.route('/captcha', methods=['PUT'])
 def captcha_solver():
     try:
-        data = request.get_json()
+        print(request)
+        if not 'file' in request.files:
+            raise Exception('No file provided')
 
-        if data is None:
-            raise Exception('No data provided')
-
-        if not 'file_type' in data:
+        if not 'file_type' in request.form:
             raise Exception('No file_type provided')
 
-        if not 'file_path' in data:
-            raise Exception('No file_path provided')
+        if not 'file_name' in request.form:
+            raise Exception('No file_name provided')
 
-        file_type = data['file_type']
-        file_path = data['file_path']
+        file_type = request.form['file_type']
+        file_name = request.form['file_name']
+        file = request.files['file']
 
         return {
-            'captcha': data
+            'captcha': solve_captcha(file=file, file_type=file_type, file_name=file_name)
         }, 200
     except Exception as e:
         return {

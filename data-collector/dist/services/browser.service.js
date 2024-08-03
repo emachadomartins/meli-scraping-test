@@ -14,9 +14,9 @@ var _BrowserService_taskId, _BrowserService_url, _BrowserService_browser, _Brows
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BrowserService = void 0;
 const puppeteer_1 = require("puppeteer");
-const file_service_1 = require("./file.service");
 const uuid_1 = require("uuid");
 const utils_1 = require("../utils");
+const file_service_1 = require("./file.service");
 class BrowserService {
     constructor(url) {
         _BrowserService_taskId.set(this, void 0);
@@ -36,7 +36,7 @@ class BrowserService {
     async getBrowser() {
         if (__classPrivateFieldGet(this, _BrowserService_browser, "f"))
             return __classPrivateFieldGet(this, _BrowserService_browser, "f");
-        const browser = await (0, puppeteer_1.launch)({});
+        const browser = await (0, puppeteer_1.launch)({ headless: false });
         __classPrivateFieldSet(this, _BrowserService_browser, browser, "f");
         return browser;
     }
@@ -65,7 +65,7 @@ class BrowserService {
         const result = {
             taskId: __classPrivateFieldGet(this, _BrowserService_taskId, "f"),
             url: __classPrivateFieldGet(this, _BrowserService_url, "f"),
-            complete: !!__classPrivateFieldGet(this, _BrowserService_browser, "f"),
+            complete: !__classPrivateFieldGet(this, _BrowserService_error, "f"),
             ...(__classPrivateFieldGet(this, _BrowserService_error, "f")
                 ? { error: __classPrivateFieldGet(this, _BrowserService_error, "f") }
                 : {
@@ -84,12 +84,13 @@ class BrowserService {
                 step: 'navigate',
                 url: __classPrivateFieldGet(this, _BrowserService_url, "f"),
                 critical: true,
+                wait: 1000,
             },
             ...steps,
+            { step: 'wait', time: 1000 },
             { step: 'export' },
         ];
         let i = 0;
-        console.log(_steps);
         for (const step of _steps) {
             try {
                 this.log(`Starting step [${i}-${step.step}]`);
@@ -109,17 +110,31 @@ class BrowserService {
                     case 'export':
                         await this.export(step.name);
                         break;
+                    case 'captcha':
+                        await this.captcha(step.type, step.file_selector, step.response_selector);
+                        break;
+                    case 'select':
+                        await this.select(step.selector, step.option);
+                        break;
+                    case 'input':
+                        await this.input(step.selector, step.value);
+                        break;
+                    case 'wait':
+                        await this.wait(step.time);
+                        break;
                     default:
                         throw new Error(`Invalid step provided`);
                 }
                 i++;
                 if (step.wait)
-                    await new Promise((resolve) => setTimeout(() => resolve(null), step.wait));
+                    await this.wait(step.wait);
             }
             catch (error) {
                 const err = error;
                 if (step.critical) {
-                    __classPrivateFieldSet(this, _BrowserService_error, err.message ?? 'Unknown Error', "f");
+                    error = err.message ?? 'Unknown Error';
+                    this.log(`Error in step [${i}-${step.step}]: ${error}`);
+                    __classPrivateFieldSet(this, _BrowserService_error, error, "f");
                     break;
                 }
                 this.log(`Warning in step [${i}-${step.step}]: ${err.message}`);
@@ -222,7 +237,6 @@ class BrowserService {
             throw new Error(`No info found for '${key}'`);
         if (__classPrivateFieldGet(this, _BrowserService_info, "f")[key])
             throw new Error(`Info '${key}' already setted for previous steps with value '${JSON.stringify({ [key]: __classPrivateFieldGet(this, _BrowserService_info, "f")[key] })}'`);
-        console.log(result);
         __classPrivateFieldGet(this, _BrowserService_info, "f")[key] = (0, utils_1.normalize)(result);
     }
     async export(name = 'index') {
@@ -231,6 +245,60 @@ class BrowserService {
         await this.exportFile(screenshot, 'screenshot.jpeg');
         const index = await page.content();
         await this.exportFile(index, `${name}.html`);
+    }
+    async select(selector, option) {
+        await this.evaluate((selector, useEval, value) => {
+            const element = (useEval ? eval(selector) : document.querySelector(selector));
+            const option = Array.from(element.options).find((opt) => opt.getAttribute('value').includes(value) ||
+                opt.innerText.includes(value));
+            option.setAttribute('selected', 'selected');
+        }, selector, (0, utils_1.isQuerySelector)(selector), option);
+    }
+    async input(selector, value) {
+        await this.evaluate((selector, useEval, value) => {
+            const element = (useEval ? eval(selector) : document.querySelector(selector));
+            element.value = value;
+        }, selector, (0, utils_1.isQuerySelector)(selector), value);
+    }
+    async captcha(type, fileSelector, responseSelector) {
+        if (!type)
+            throw new Error('No captcha type provided');
+        if (!fileSelector)
+            throw new Error('No fileSelector provided');
+        if (!responseSelector)
+            throw new Error('No responseSelector provided');
+        const page = await this.getPage();
+        const client = await page.createCDPSession();
+        await client.send('Page.setDownloadBehavior', {
+            behavior: 'allow',
+            downloadPath: this.resultPath,
+        });
+        const url = await page.evaluate((selector, useEval) => {
+            const element = (useEval ? eval(selector) : document.querySelector(selector));
+            if (!element)
+                throw new Error(`Element '${selector}' not found`);
+            return element.getAttribute('src');
+        }, fileSelector, (0, utils_1.isQuerySelector)(fileSelector));
+        if (!url)
+            throw new Error(`No captcha found in selector '${fileSelector}'`);
+        await this.wait(1000);
+        await page.evaluate((url, type) => {
+            const anchor = document.createElement('a');
+            anchor.setAttribute('download', `captcha_${type}`);
+            anchor.setAttribute('href', url.startsWith(location.protocol)
+                ? url
+                : `${location.protocol}//${location.host}/${url}`);
+            anchor.click();
+        }, url, type);
+        await this.wait(2000);
+        const { resolution, file, fileName } = await (0, utils_1.resolveCaptcha)(this.resultPath, type);
+        await page.focus(responseSelector);
+        await page.keyboard.type(resolution.captcha);
+        await this.wait(1000);
+        await this.exportFile(file, fileName);
+    }
+    async wait(time) {
+        await new Promise((resolve) => setTimeout(() => resolve(null), time));
     }
 }
 exports.BrowserService = BrowserService;
