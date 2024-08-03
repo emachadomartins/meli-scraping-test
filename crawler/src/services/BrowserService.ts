@@ -4,16 +4,16 @@ import {
   launch,
   Page,
   PuppeteerLifeCycleEvent,
-} from 'puppeteer';
-import { v4 as uuid } from 'uuid';
-import { Result, Step } from '../types';
+} from "puppeteer";
+import { v4 as uuid } from "uuid";
+import { Result, Step } from "../types";
 import {
+  convertFile,
   ERROR_STATUS,
   isQuerySelector,
   normalize,
-  convertFile,
-} from '../utils';
-import { FileService } from './file.service';
+} from "../utils";
+import { FileService } from "./FileService";
 
 export class BrowserService {
   #taskId: string;
@@ -24,10 +24,12 @@ export class BrowserService {
   #logs: string[] = [];
   #error?: string;
   #files: string[] = [];
+  #retry: number;
 
-  constructor(url: string) {
+  constructor(url: string, retry = 0) {
     this.#taskId = uuid();
     this.#url = url;
+    this.#retry = retry;
   }
 
   get resultPath() {
@@ -70,6 +72,7 @@ export class BrowserService {
       taskId: this.#taskId,
       url: this.#url,
       complete: !this.#error,
+      retry: this.#retry,
       ...(this.#error
         ? { error: this.#error }
         : {
@@ -79,7 +82,7 @@ export class BrowserService {
       logs: this.#logs,
     };
 
-    await this.exportFile(JSON.stringify(result), 'result.json');
+    await this.exportFile(JSON.stringify(result), "result.json");
 
     return result;
   }
@@ -89,14 +92,14 @@ export class BrowserService {
 
     const _steps: Step[] = [
       {
-        step: 'navigate',
+        step: "navigate",
         url: this.#url,
         critical: true,
         wait: 1000,
       },
       ...steps,
-      { step: 'wait', time: 1000 },
-      { step: 'export' },
+      { step: "wait", time: 1000 },
+      { step: "export" },
     ];
 
     let i = 0;
@@ -105,40 +108,40 @@ export class BrowserService {
       try {
         this.log(`Starting step [${i}-${step.step}]`);
         switch (step.step) {
-          case 'click':
+          case "click":
             await this.click(step.selector);
             break;
-          case 'navigate':
+          case "navigate":
             await this.navigate(step.url, step.timeout, step.event);
             break;
-          case 'scroll':
+          case "scroll":
             await this.scroll(
               step.distance,
               step.delay,
               step.direction,
-              step.selector,
+              step.selector
             );
             break;
-          case 'info':
+          case "info":
             await this.getInfo(step.key, step.script);
             break;
-          case 'export':
+          case "export":
             await this.export(step.name);
             break;
-          case 'captcha':
+          case "captcha":
             await this.captcha(
               step.type,
               step.file_selector,
-              step.response_selector,
+              step.response_selector
             );
             break;
-          case 'select':
+          case "select":
             await this.select(step.selector, step.option);
             break;
-          case 'input':
+          case "input":
             await this.input(step.selector, step.value);
             break;
-          case 'wait':
+          case "wait":
             await this.wait(step.time);
             break;
           default:
@@ -149,9 +152,9 @@ export class BrowserService {
       } catch (error) {
         const err = error as Error;
         if (step.critical) {
-          error = err.message ?? 'Unknown Error';
+          error = err.message ?? "Unknown Error";
           this.log(`Error in step [${i}-${step.step}]: ${error}`);
-          this.#error = error;
+          this.#error = error as string;
           break;
         }
 
@@ -164,7 +167,7 @@ export class BrowserService {
 
   private async evaluate<
     P extends unknown[],
-    F extends EvaluateFunc<P> = EvaluateFunc<P>,
+    F extends EvaluateFunc<P> = EvaluateFunc<P>
   >(func: F, ...params: P) {
     const page = await this.getPage();
     return page.evaluate(func, ...params);
@@ -177,7 +180,7 @@ export class BrowserService {
   }
 
   private async click(selector: string) {
-    if (!selector) throw new Error('No selector provided');
+    if (!selector) throw new Error("No selector provided");
     return this.evaluate(
       (selector: string, useEval: boolean) => {
         const element = (
@@ -191,7 +194,7 @@ export class BrowserService {
         return true;
       },
       selector,
-      isQuerySelector(selector),
+      isQuerySelector(selector)
     ).then((result) => {
       if (!result) throw new Error(`Element '${selector}' not exists `);
     });
@@ -200,8 +203,8 @@ export class BrowserService {
   private async scroll(
     distance = 200,
     delay = 500,
-    direction?: 'top' | 'bottom' | 'infinity',
-    selector?: string,
+    direction?: "top" | "bottom" | "infinity",
+    selector?: string
   ) {
     const promise = selector
       ? () =>
@@ -218,7 +221,7 @@ export class BrowserService {
               return true;
             },
             selector,
-            isQuerySelector(selector),
+            isQuerySelector(selector)
           ).then((res) => {
             if (!res) throw new Error(`Element '${selector}' not exists`);
             return res;
@@ -228,9 +231,9 @@ export class BrowserService {
             (
               distance: number,
               delay: number,
-              direction?: 'top' | 'bottom' | 'infinity',
+              direction?: "top" | "bottom" | "infinity"
             ) => {
-              if (direction === 'infinity')
+              if (direction === "infinity")
                 return new Promise<boolean>((resolve) => {
                   let totalHeight = 0;
                   const timer = setInterval(() => {
@@ -259,13 +262,13 @@ export class BrowserService {
 
               window.scrollBy(
                 0,
-                direction === 'bottom' ? document.body.scrollHeight : 0,
+                direction === "bottom" ? document.body.scrollHeight : 0
               );
               return true;
             },
             distance,
             delay,
-            direction,
+            direction
           ) as Promise<boolean>;
 
     return promise();
@@ -274,9 +277,9 @@ export class BrowserService {
   private async navigate(
     url: string,
     timeout = 60000,
-    event: PuppeteerLifeCycleEvent = 'networkidle0',
+    event: PuppeteerLifeCycleEvent = "networkidle0"
   ) {
-    if (!url) throw new Error('No url provided');
+    if (!url) throw new Error("No url provided");
     const page = await this.getPage();
 
     const response = await page
@@ -297,30 +300,32 @@ export class BrowserService {
   }
 
   private async getInfo(key: string, script: string) {
-    if (!script) throw new Error('No script Provided');
-    if (!key) throw new Error('No infoKey Provided');
+    if (!script) throw new Error("No script Provided");
+    if (!key) throw new Error("No infoKey Provided");
     const result = await this.evaluateScript<unknown>(script).catch(
       (err: Error) => {
         throw new Error(`[${err.message}] while getting info '${key}'`);
-      },
+      }
     );
 
     if (!result) throw new Error(`No info found for '${key}'`);
 
     if (this.#info[key])
       throw new Error(
-        `Info '${key}' already setted for previous steps with value '${JSON.stringify({ [key]: this.#info[key] })}'`,
+        `Info '${key}' already setted for previous steps with value '${JSON.stringify(
+          { [key]: this.#info[key] }
+        )}'`
       );
 
     this.#info[key] = normalize(result);
   }
 
-  private async export(name = 'index') {
+  private async export(name = "index") {
     const page = await this.getPage();
 
     const screenshot = await page.screenshot({ fullPage: true });
 
-    await this.exportFile(screenshot, 'screenshot.jpeg');
+    await this.exportFile(screenshot, "screenshot.jpeg");
 
     const index = await page.content();
 
@@ -336,15 +341,16 @@ export class BrowserService {
 
         const option = Array.from(element.options).find(
           (opt) =>
-            opt.getAttribute('value').includes(value) ||
-            opt.innerText.includes(value),
+            opt.getAttribute("value")?.includes(value) ||
+            opt.innerText.includes(value)
         );
+        if (!option) throw new Error("Option not found");
 
-        option.setAttribute('selected', 'selected');
+        option.setAttribute("selected", "selected");
       },
       selector,
       isQuerySelector(selector),
-      option,
+      option
     );
   }
 
@@ -359,24 +365,24 @@ export class BrowserService {
       },
       selector,
       isQuerySelector(selector),
-      value,
+      value
     );
   }
 
   private async captcha(
-    type: 'image' | 'audio',
+    type: "image" | "audio",
     fileSelector: string,
-    responseSelector: string,
+    responseSelector: string
   ) {
-    if (!type) throw new Error('No captcha type provided');
-    if (!fileSelector) throw new Error('No fileSelector provided');
-    if (!responseSelector) throw new Error('No responseSelector provided');
+    if (!type) throw new Error("No captcha type provided");
+    if (!fileSelector) throw new Error("No fileSelector provided");
+    if (!responseSelector) throw new Error("No responseSelector provided");
 
     const page = await this.getPage();
     const client = await page.createCDPSession();
 
-    await client.send('Page.setDownloadBehavior', {
-      behavior: 'allow',
+    await client.send("Page.setDownloadBehavior", {
+      behavior: "allow",
       downloadPath: this.resultPath,
     });
 
@@ -386,10 +392,10 @@ export class BrowserService {
           useEval ? eval(selector) : document.querySelector(selector)
         ) as HTMLElement;
         if (!element) throw new Error(`Element '${selector}' not found`);
-        return element.getAttribute('src');
+        return element.getAttribute("src");
       },
       fileSelector,
-      isQuerySelector(fileSelector),
+      isQuerySelector(fileSelector)
     );
 
     if (!url) throw new Error(`No captcha found in selector '${fileSelector}'`);
@@ -397,25 +403,26 @@ export class BrowserService {
 
     await page.evaluate(
       (url: string, type: string) => {
-        const anchor = document.createElement('a') as HTMLElement;
-        anchor.setAttribute('download', `captcha_${type}`);
+        const anchor = document.createElement("a") as HTMLElement;
+        anchor.setAttribute("download", `captcha_${type}`);
         anchor.setAttribute(
-          'href',
+          "href",
           url.startsWith(location.protocol)
             ? url
-            : `${location.protocol}//${location.host}/${url}`,
+            : `${location.protocol}//${location.host}/${url}`
         );
         anchor.click();
       },
       url,
-      type,
+      type
     );
 
     await this.wait(2000);
 
     const { resolution, file, fileName } = await convertFile(
       this.resultPath,
-      type,
+      "captcha",
+      type
     );
 
     await page.focus(responseSelector);

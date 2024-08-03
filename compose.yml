@@ -1,0 +1,16 @@
+services:
+  crawler:
+    container_name: 'data_collector_crawler'
+    env_file: './crawler/.env'
+    build: ./crawler
+    environment:
+      - SQS_QUEUE_URL=${SQS_QUEUE_URL}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+  back:
+    container_name: 'data_collector_back'
+    env_file: './back/.env'
+    build: ./back
+    ports:
+      - '5000:5000'

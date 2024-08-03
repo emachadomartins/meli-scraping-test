@@ -1,7 +1,5 @@
 FROM python:3.12
 
-COPY ./requirements.txt /app/requirements.txt
-
 WORKDIR /app
 
 RUN apt-get update \

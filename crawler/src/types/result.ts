@@ -6,4 +6,5 @@ export type Result = {
   error?: string;
   info?: Record<string, unknown>;
   files?: string[];
+  retry: number;
 };
