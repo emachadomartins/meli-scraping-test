@@ -14,3 +14,9 @@ services:
     build: ./back
     ports:
       - '5000:5000'
+  front:
+    container_name: 'data_collector_front'
+    env_file: './front/.env'
+    build: ./front
+    ports:
+      - '3000:3000'
