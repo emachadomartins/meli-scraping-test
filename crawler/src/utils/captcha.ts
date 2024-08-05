@@ -24,8 +24,8 @@ export const convertFile = async (
   formData.append("file_type", fileType);
   formData.append("file", new Blob([file]), fileName);
 
-  const response = await RequestService.send<{ captcha: string }>({
-    url: "http://localhost:5000/captcha",
+  const response = await RequestService.send<{ text: string }>({
+    url: "http://localhost:5000/text",
     method: "PUT",
     form: formData,
     headers: {

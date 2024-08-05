@@ -5,11 +5,11 @@ import {
   Page,
   PuppeteerLifeCycleEvent,
 } from "puppeteer";
-import { v4 as uuid } from "uuid";
 import { Result, Step } from "../types";
 import {
   convertFile,
   ERROR_STATUS,
+  isDev,
   isQuerySelector,
   normalize,
 } from "../utils";
@@ -27,8 +27,8 @@ export class BrowserService {
   #retry: number;
   #buffers: Record<string, Buffer> = {};
 
-  constructor(url: string, retry = 0) {
-    this.#taskId = uuid();
+  constructor(taskId: string, url: string, retry = 0) {
+    this.#taskId = taskId;
     this.#url = url;
     this.#retry = retry;
   }
@@ -39,7 +39,7 @@ export class BrowserService {
 
   private async getBrowser(): Promise<Browser> {
     if (this.#browser) return this.#browser;
-    const browser = await launch({ headless: false });
+    const browser = await launch({ headless: !isDev });
     this.#browser = browser;
     return browser;
   }
@@ -64,14 +64,14 @@ export class BrowserService {
   }
 
   private async log(log: string) {
-    this.#logs.push(log);
+    this.#logs.push(`[${new Date()}]: ${log}`);
   }
 
   private async endNavigation(): Promise<Result> {
     await this.close();
 
     const result = {
-      taskId: this.#taskId,
+      id: this.#taskId,
       url: this.#url,
       complete: !this.#error,
       retry: this.#retry,
@@ -428,7 +428,7 @@ export class BrowserService {
     );
 
     await page.focus(responseSelector);
-    await page.keyboard.type(resolution.captcha);
+    await page.keyboard.type(resolution.text);
 
     await this.wait(1000);
     await this.exportFile(file, fileName);

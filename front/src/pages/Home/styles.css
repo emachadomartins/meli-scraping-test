@@ -22,7 +22,7 @@
   font-size: 70px;
 }
 
-.btn {
+.button {
   border-radius: 4px;
   height: 44px;
   font-size: 13px;
@@ -49,17 +49,25 @@
   color: #61dafb;
   border-color: #61dafb;
 }
-.btn:active,
-.btn:focus {
+.button:active,
+.button:focus {
   background-color: #61dafb;
   color: #000000;
   box-shadow: 0 8px 24px 0 rgba(16, 39, 112, 0.2);
 }
-.btn:hover {
+.button:hover {
   cursor: pointer;
   background-color: #61dafb;
   color: #000000;
   box-shadow: 0 8px 24px 0 rgba(16, 39, 112, 0.2);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
 }
 
 .input-box {
@@ -67,7 +75,7 @@
   position: relative;
 }
 
-.input-box input {
+.input-box .input {
   width: 100%;
   padding: 10px 0;
   font-size: 16px;
@@ -90,10 +98,63 @@
   transition: 0.5s;
 }
 
-.input-box input:focus ~ label,
-.input-box input:valid ~ label {
+.input-box .input:focus ~ label,
+.input-box .input:valid ~ label {
   top: -20px;
   left: 0;
   color: #03e9f4;
   font-size: 12px;
+}
+
+.tasks {
+  display: flex;
+  list-style: none;
+  counter-reset: list;
+  flex-direction: column;
+}
+
+.tasks .task {
+  display: flex;
+  border: 2px;
+  border-radius: 10px;
+  border-color: #61dafb;
+  border-style: solid;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 500px;
+  margin: 50px;
+  padding: 50px;
+}
+
+.tasks .task h3 {
+  display: flex;
+  align-items: baseline;
+  margin: 0 0 1rem;
+  color: #61dafb;
+}
+
+.tasks .task p {
+  margin: 10px;
+  width: 500px;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: clip;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.tasks .task a {
+  color: #03e9f4;
+}
+
+.tasks .task .complete {
+  color: green;
+  font-weight: bolder;
+}
+
+.tasks .task .error {
+  color: red;
+  font-weight: bolder;
 }

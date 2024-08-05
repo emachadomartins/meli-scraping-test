@@ -1,12 +1,13 @@
 {
-  "name": "crawler",
+  "name": "data-collector-crawler",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean",
-    "start": "tsx index/run.ts"
+    "start": "tsx src/run.ts",
+    "dev": "tsx src/dev.ts"
   },
   "devDependencies": {
     "@types/node": "^22.1.0",

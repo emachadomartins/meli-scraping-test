@@ -1,4 +1,4 @@
-export type Result = {
+export type Task = {
   id: string;
   url: string;
   complete: boolean;

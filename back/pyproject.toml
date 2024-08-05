@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "captcha-solver"
+name = "data-collector-back"
 version = "0.1.0"
 description = ""
 authors = ["hakuunabatata <emachadomartins1999@gmail.com>"]
@@ -12,6 +12,11 @@ openai-whisper = "^20231117"
 pillow = "^10.4.0"
 pytesseract = "^0.3.10"
 pdf2image = "^1.17.0"
+flask-cors = "^4.0.1"
+boto3 = "^1.34.153"
+redis = "^5.0.8"
+python-dotenv = "^1.0.1"
+flask-ext = "^0.1"
 
 
 [build-system]

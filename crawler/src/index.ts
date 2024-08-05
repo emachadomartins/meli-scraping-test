@@ -8,21 +8,21 @@ export const handleTask = async (
   onSuccess: (result: Result) => Promise<void>,
   onError: (error: Error | string) => Promise<void>
 ) => {
-  const { url, scripts, retry = 0 } = task;
+  const { url, scripts, retry = 0, id } = task;
 
   console.log(`Starting scraping '${url}'`);
 
   try {
-    const browser = new BrowserService(url, retry);
+    const browser = new BrowserService(task.id, url, retry);
 
     const result = await browser.execute(scripts);
 
-    const { complete, error, files = [], taskId } = result;
+    const { complete, error, files = [] } = result;
 
-    if (!isDev && files.length && (complete || retry > 5)) {
-      await uploadFiles(files, taskId);
+    if (files.length && (complete || retry > 5)) {
+      await uploadFiles(files, id);
 
-      await RedisService.set(result, "tasks", taskId);
+      await RedisService.set(result, "task", id);
     } else if (!complete && retry <= 5) {
       throw new Error(error ?? "unknown error");
     }

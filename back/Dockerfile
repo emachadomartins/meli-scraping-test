@@ -20,4 +20,4 @@ COPY . /app
 RUN poetry install
 
 EXPOSE 5000
-CMD [ "poetry", "run", "python", "-m", "flask", "--app", "src/api", "run", "--host=0.0.0.0" ]
+CMD [ "poetry", "run", "python", "-m", "flask", "--app", "src/index", "run", "--host=0.0.0.0" ]
