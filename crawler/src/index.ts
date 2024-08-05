@@ -1,51 +1,38 @@
-import { BrowserService, SQSService } from "./services";
-import { Task } from "./types";
+import { RedisService } from "services/RedisService";
+import { BrowserService } from "./services";
+import { Result, Task } from "./types";
+import { isDev, uploadFiles } from "./utils";
 
-export const handleMessages = async () => {
-  const queueUrl = process.env["QUEUE_URL"];
-  if (!queueUrl) throw new Error("Missing QUEUE_URL");
+export const handleTask = async (
+  task: Task,
+  onSuccess: (result: Result) => Promise<void>,
+  onError: (error: Error | string) => Promise<void>
+) => {
+  const { url, scripts, retry = 0 } = task;
 
-  const messages = await SQSService.receive<Task>(queueUrl);
+  console.log(`Starting scraping '${url}'`);
 
-  console.log(`${messages.length} messages found in ${queueUrl}`);
+  try {
+    const browser = new BrowserService(url, retry);
 
-  await Promise.all(
-    messages.map(async ({ body, receipt }) => {
-      const { url, scripts, retry = 0 } = body;
+    const result = await browser.execute(scripts);
 
-      console.log(`Starting message [${receipt}]: ${url}`);
+    const { complete, error, files = [], taskId } = result;
 
-      const browser = new BrowserService(url, retry);
+    if (!isDev && files.length && (complete || retry > 5)) {
+      await uploadFiles(files, taskId);
 
-      const { complete, error } = await browser
-        .execute(scripts)
-        .catch(async (error: Error) => ({
-          complete: false,
-          error: error.message,
-        }));
+      await RedisService.set(result, "tasks", taskId);
+    } else if (!complete && retry <= 5) {
+      throw new Error(error ?? "unknown error");
+    }
 
-      if (!complete && retry <= 5) {
-        const err = error ?? "unknown error";
-        await SQSService.send(queueUrl, {
-          ...body,
-          error: err,
-          retry: retry + 1,
-        });
-
-        console.log(`[${err}] while scraping '${url}'`);
-      }
-
-      await SQSService.delete(queueUrl, receipt);
-    })
-  );
+    await onSuccess(result);
+  } catch (error) {
+    const message = error instanceof Error ? error : "unknown error";
+    console.log(`Error '${message}' while scraping '${url}'`);
+    await onError(message);
+  } finally {
+    console.log(`Finish scraping '${url}'`);
+  }
 };
-
-const run = async () => {
-  await handleMessages().then(() => {
-    setTimeout(async () => {
-      await run();
-    }, 1 * 60 * 1000);
-  });
-};
-
-run();

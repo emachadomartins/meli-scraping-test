@@ -25,6 +25,7 @@ export class BrowserService {
   #error?: string;
   #files: string[] = [];
   #retry: number;
+  #buffers: Record<string, Buffer> = {};
 
   constructor(url: string, retry = 0) {
     this.#taskId = uuid();
@@ -58,6 +59,7 @@ export class BrowserService {
   private async exportFile(content: string | Buffer, fileName: string) {
     this.#files.push(`${this.#taskId}/${fileName}`);
     const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content);
+    this.#buffers[fileName] = buffer;
     return FileService.write(this.resultPath, fileName, buffer);
   }
 

@@ -1,0 +1,9 @@
+{
+    "url": "EXAMPLE_URL",
+    "scripts": [
+        {
+            "step": "wait",
+            "time": 1000
+        }
+    ]
+}

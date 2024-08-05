@@ -8,6 +8,7 @@
     "baseUrl": "./src",
     "target": "esnext",
     "moduleResolution": "node",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "resolveJsonModule": true
   }
 }

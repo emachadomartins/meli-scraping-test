@@ -1,3 +1,4 @@
-export * from './regex';
-export * from './const';
-export * from './captcha';
+export * from "./captcha";
+export * from "./const";
+export * from "./regex";
+export * from "./upload";
