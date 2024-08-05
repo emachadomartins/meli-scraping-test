@@ -1,5 +1,6 @@
-import axios, { Method } from 'axios';
+import axios, { Method } from "axios";
 
+// Cria um serviço para fazer requisições http
 export class RequestService {
   public static async send<T>(options: {
     url: string;
@@ -8,7 +9,7 @@ export class RequestService {
     body?: unknown;
     headers?: Record<string, string>;
   }) {
-    const { url, method = 'GET', form, body, headers } = options;
+    const { url, method = "GET", form, body, headers } = options;
 
     return axios<T>({
       url,

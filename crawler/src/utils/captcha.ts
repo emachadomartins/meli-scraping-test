@@ -1,5 +1,7 @@
 import { FileService, RequestService } from "../services";
 
+// Função que recebe um caminho para arquivo, converte para Buffer,
+// envia para a api de conversão para texto e retorna o resultado convertido
 export const convertFile = async (
   path: string,
   fileName: string,

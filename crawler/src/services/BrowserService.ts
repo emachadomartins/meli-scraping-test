@@ -15,6 +15,7 @@ import {
 } from "../utils";
 import { FileService } from "./FileService";
 
+// Cria a classe BrowserService, onde serão executadas todas as operações de Browser utilizando a lib puppeteer
 export class BrowserService {
   #taskId: string;
   #url: string;
@@ -33,64 +34,9 @@ export class BrowserService {
     this.#retry = retry;
   }
 
-  get resultPath() {
-    return `output/${this.#taskId}`;
-  }
-
-  private async getBrowser(): Promise<Browser> {
-    if (this.#browser) return this.#browser;
-    const browser = await launch({ headless: !isDev });
-    this.#browser = browser;
-    return browser;
-  }
-
-  private async close() {
-    if (this.#browser) await this.#browser.close();
-  }
-
-  private async getPage(): Promise<Page> {
-    if (this.#page) return this.#page;
-    const browser = await this.getBrowser();
-    const page = await browser.newPage();
-    this.#page = page;
-    return page;
-  }
-
-  private async exportFile(content: string | Buffer, fileName: string) {
-    this.#files.push(`${this.#taskId}/${fileName}`);
-    const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content);
-    this.#buffers[fileName] = buffer;
-    return FileService.write(this.resultPath, fileName, buffer);
-  }
-
-  private async log(log: string) {
-    this.#logs.push(`[${new Date()}]: ${log}`);
-  }
-
-  private async endNavigation(): Promise<Result> {
-    await this.close();
-
-    const result = {
-      id: this.#taskId,
-      url: this.#url,
-      complete: !this.#error,
-      retry: this.#retry,
-      ...(this.#error
-        ? { error: this.#error }
-        : {
-            info: this.#info,
-            files: [...this.#files, `${this.#taskId}/result.json`],
-          }),
-      logs: this.#logs,
-    };
-
-    await this.exportFile(JSON.stringify(result), "result.json");
-
-    return result;
-  }
-
+  // Função onde ocorre a execução dos steps passados na Task e escolhe qual outra função executar
   public async execute(steps: Step[] = []): Promise<Result> {
-    this.log(`Starting task '${this.#taskId}'`);
+    this.log = `Starting task '${this.#taskId}'`;
 
     const _steps: Step[] = [
       {
@@ -108,7 +54,7 @@ export class BrowserService {
 
     for (const step of _steps) {
       try {
-        this.log(`Starting step [${i}-${step.step}]`);
+        this.log = `Starting step [${i}-${step.step}]`;
         switch (step.step) {
           case "click":
             await this.click(step.selector);
@@ -153,20 +99,83 @@ export class BrowserService {
         if (step.wait) await this.wait(step.wait);
       } catch (error) {
         const err = error as Error;
+
+        // Encerra a execução caso um step critico estoure erro
         if (step.critical) {
           error = err.message ?? "Unknown Error";
-          this.log(`Error in step [${i}-${step.step}]: ${error}`);
+          this.log = `Error in step [${i}-${step.step}]: ${error}`;
           this.#error = error as string;
           break;
         }
 
-        this.log(`Warning in step [${i}-${step.step}]: ${err.message}`);
+        // Adiciona um warning ao log caso um step não-critico estoure erro
+        this.log = `Warning in step [${i}-${step.step}]: ${err.message}`;
       }
     }
 
-    return this.endNavigation();
+    // Finaliza a execução
+    await this.close();
+    await this.exportFile(JSON.stringify(this.result), "result.json");
+    return this.result;
   }
 
+  // Função que valida se já existe uma instancia de browser criada, e caso não, cria e retorna
+  private async getBrowser(): Promise<Browser> {
+    if (this.#browser) return this.#browser;
+    const browser = await launch({ headless: !isDev });
+    this.#browser = browser;
+    return browser;
+  }
+
+  // Função que valida se já existe uma instancia de pagina criada, e caso não, cria e retorna
+  private async getPage(): Promise<Page> {
+    if (this.#page) return this.#page;
+    const browser = await this.getBrowser();
+    const page = await browser.newPage();
+    this.#page = page;
+    return page;
+  }
+
+  // Função para fechar o browser
+  private async close() {
+    if (this.#browser) await this.#browser.close();
+  }
+
+  // Função que salva um arquivo na memoria e o adiciona na lista de arquivos da execu~ção
+  private async exportFile(content: string | Buffer, fileName: string) {
+    this.#files.push(`${this.#taskId}/${fileName}`);
+    const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content);
+    this.#buffers[fileName] = buffer;
+    return FileService.write(this.resultPath, fileName, buffer);
+  }
+
+  get resultPath() {
+    return `output/${this.#taskId}`;
+  }
+
+  // Função que adiciona um novo log de execução
+  private set log(log: string) {
+    this.#logs.push(`[${new Date()}]: ${log}`);
+  }
+
+  // Função que retorna o result a partir das variaveis da classe
+  private get result() {
+    return {
+      id: this.#taskId,
+      url: this.#url,
+      complete: !this.#error,
+      retry: this.#retry,
+      ...(this.#error
+        ? { error: this.#error }
+        : {
+            info: this.#info,
+            files: [...this.#files, `${this.#taskId}/result.json`],
+          }),
+      logs: this.#logs,
+    };
+  }
+
+  // função que executa operações dentro da DOM de um site a partir de um callback
   private async evaluate<
     P extends unknown[],
     F extends EvaluateFunc<P> = EvaluateFunc<P>
@@ -175,12 +184,14 @@ export class BrowserService {
     return page.evaluate(func, ...params);
   }
 
+  // função que executa operações dentro da DOM de um site a partir de uma string
   private async evaluateScript<T = void>(script: string): Promise<T> {
     const page = await this.getPage();
 
     return page.evaluate(script) as Promise<T>;
   }
 
+  // Função que clica em um elemento html a partir de um enderço na DOM
   private async click(selector: string) {
     if (!selector) throw new Error("No selector provided");
     return this.evaluate(
@@ -202,6 +213,7 @@ export class BrowserService {
     });
   }
 
+  // Função que executa um scroll dentro da DOM
   private async scroll(
     distance = 200,
     delay = 500,
@@ -276,32 +288,40 @@ export class BrowserService {
     return promise();
   }
 
+  // Função que utiliza um browser para acessar uma URL
   private async navigate(
     url: string,
     timeout = 60000,
     event: PuppeteerLifeCycleEvent = "networkidle0"
   ) {
+    // Estoura erro caso não seja passada uma url
     if (!url) throw new Error("No url provided");
     const page = await this.getPage();
 
     const response = await page
       .goto(url, { timeout, waitUntil: event })
       .catch((err: Error) => {
+        // Estoura erro quaso não seja possivel acessar uma url
         throw new Error(`[${err.message}] while navigating to '${url}'`);
       });
 
+    // Estoura erro quaso não seja receba uma resposta do browser ao acessar uma url
     if (!response) throw new Error(`No response for '${url}'`);
 
     const ok = response.ok();
     const status = response.status();
 
+    // Estoura erro quaso não seja possivel acessar uma url
     if (!ok) throw new Error(`URL '${url}' can't be accessed`);
 
     if (ERROR_STATUS.includes(status))
+      // Estoura erro quaso seja recebido um httpStatus não aceito ao acessar uma url
       throw new Error(`Get HttpStatus ${status} while navigating to '${url}'`);
   }
 
+  // Função que recebe um script e uma key e adiciona essa informação as informações crawleadas
   private async getInfo(key: string, script: string) {
+    // Estoura erro caso uma das informações não seja valida
     if (!script) throw new Error("No script Provided");
     if (!key) throw new Error("No infoKey Provided");
     const result = await this.evaluateScript<unknown>(script).catch(
@@ -310,6 +330,7 @@ export class BrowserService {
       }
     );
 
+    // Estoura erro caso a execução do script não retorne nada
     if (!result) throw new Error(`No info found for '${key}'`);
 
     if (this.#info[key])
@@ -322,6 +343,7 @@ export class BrowserService {
     this.#info[key] = normalize(result);
   }
 
+  // Função que tira um screenshot do browser e exporta o conteudo do html para um arquivo em memoria
   private async export(name = "index") {
     const page = await this.getPage();
 
@@ -334,6 +356,7 @@ export class BrowserService {
     await this.exportFile(index, `${name}.html`);
   }
 
+  // Função que seleciona a opção de um 'select' a partir de um seletor
   private async select(selector: string, option: string) {
     await this.evaluate(
       (selector: string, useEval: boolean, value: string) => {
@@ -356,6 +379,7 @@ export class BrowserService {
     );
   }
 
+  // Função que insere um valor a um input a partir de um seletor
   private async input(selector: string, value: string) {
     await this.evaluate(
       (selector: string, useEval: boolean, value: string) => {
@@ -371,6 +395,7 @@ export class BrowserService {
     );
   }
 
+  // Função que recebe seletor, procura um arquivo de captcha, baixa, envia para a resolução e insere em um input o resultado retornado
   private async captcha(
     type: "image" | "audio",
     fileSelector: string,
@@ -383,11 +408,13 @@ export class BrowserService {
     const page = await this.getPage();
     const client = await page.createCDPSession();
 
+    // muda o diretório padrão de download de arquivos do Browser
     await client.send("Page.setDownloadBehavior", {
       behavior: "allow",
       downloadPath: this.resultPath,
     });
 
+    // Pega a url de um arquivo de captcha a partir de um seletor
     const url = await page.evaluate(
       (selector: string, useEval: boolean) => {
         const element = (
@@ -400,9 +427,11 @@ export class BrowserService {
       isQuerySelector(fileSelector)
     );
 
+    // Estoura erro caso o seletor não retorne url
     if (!url) throw new Error(`No captcha found in selector '${fileSelector}'`);
     await this.wait(1000);
 
+    // Cria um elemento <a> no html, insere as informações de download nele e clica para baixar um arquivo na memoria
     await page.evaluate(
       (url: string, type: string) => {
         const anchor = document.createElement("a") as HTMLElement;
@@ -421,12 +450,14 @@ export class BrowserService {
 
     await this.wait(2000);
 
+    // Envia o arquivo para a resolução
     const { resolution, file, fileName } = await convertFile(
       this.resultPath,
       "captcha",
       type
     );
 
+    // Insere o resultado da resolução em um input a partir de um seletor
     await page.focus(responseSelector);
     await page.keyboard.type(resolution.text);
 
@@ -434,6 +465,7 @@ export class BrowserService {
     await this.exportFile(file, fileName);
   }
 
+  // Função que espera um tempo passado em milisegundos
   private async wait(time: number) {
     await new Promise((resolve) => setTimeout(() => resolve(null), time));
   }

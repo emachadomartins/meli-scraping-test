@@ -17,7 +17,9 @@ export function Home() {
   }, [tasks]);
 
   const handleTasks = () => {
-    request<{ tasks: Task[] }>("/task").then(({ tasks }) => setTasks(tasks));
+    request<{ tasks: Task[] }>("/task")
+      .then(({ tasks }) => setTasks(tasks))
+      .catch(() => setTasks([]));
   };
 
   const handleSubmit = async () => {

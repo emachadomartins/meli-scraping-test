@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/client-sqs";
 import { fromEnv } from "@aws-sdk/credential-providers";
 
+// Serviço para realizar operações no AWS-SQS
 export class SQSService {
   private static client = new SQSClient({
     region: process.env["AWS_REGION"] ?? "us-east-1",

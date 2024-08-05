@@ -19,4 +19,4 @@ RUN npm install
 
 RUN npm run build
 
-CMD [ "node", "dist/run.js" ]
+CMD [ "node", "dist/src/run.js" ]

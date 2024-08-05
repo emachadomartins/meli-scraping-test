@@ -1,3 +1,4 @@
+# Dicionario dos formatos de arquivo aceitos
 MIMETYPES = {
     'css': 'text/css',
     'csv': 'text/csv',

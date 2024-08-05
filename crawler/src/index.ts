@@ -1,8 +1,8 @@
-import { RedisService } from "services/RedisService";
-import { BrowserService } from "./services";
+import { BrowserService, RedisService } from "./services";
 import { Result, Task } from "./types";
 import { isDev, uploadFiles } from "./utils";
 
+// Função que chama o BrowserService, espera a conclusão da execução e sobe os resultados no S3+Redis
 export const handleTask = async (
   task: Task,
   onSuccess: (result: Result) => Promise<void>,

@@ -1,5 +1,6 @@
 import Redis from "ioredis";
 
+// Cria um servico para realizar operações no Redis
 export class RedisService {
   private static client = new Redis(process.env["REDIS_URL"]!);
 

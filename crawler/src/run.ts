@@ -4,6 +4,7 @@ import { Task } from "./types";
 
 export const handleMessages = async () => {};
 
+// Função que busca mensagens na fila do SQS e manda para execução
 const run = async () => {
   const queueUrl = process.env["QUEUE_URL"];
   if (!queueUrl) throw new Error("Missing QUEUE_URL");

@@ -6,8 +6,8 @@ import {
   rename,
   readdir,
   rm,
-} from 'node:fs';
-import { promisify } from 'node:util';
+} from "node:fs";
+import { promisify } from "node:util";
 
 const mkdirAsync = promisify(mkdir);
 const writeFileAsync = promisify(writeFile);
@@ -16,6 +16,7 @@ const renameAsync = promisify(rename);
 const readdirAsync = promisify(readdir);
 const rmAsync = promisify(rm);
 
+// Classe que realiza no OS operações de arquivos e diretorios
 export class FileService {
   static async mkdir(path: string, recursive = true) {
     return mkdirAsync(path, { recursive });
@@ -24,10 +25,10 @@ export class FileService {
   static async write(
     destination: string,
     file: string,
-    content: string | Buffer,
+    content: string | Buffer
   ) {
     return mkdirAsync(destination, { recursive: true }).then(() =>
-      writeFileAsync([destination, file].join('/'), content),
+      writeFileAsync([destination, file].join("/"), content)
     );
   }
 
@@ -47,7 +48,7 @@ export class FileService {
     return readdirAsync(path, {
       recursive,
       withFileTypes: true,
-      encoding: 'utf-8',
+      encoding: "utf-8",
     });
   }
 
