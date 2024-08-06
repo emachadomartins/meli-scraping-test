@@ -3,8 +3,6 @@ import os
 from uuid import uuid4 as uuid
 
 from src.services.aws import put_object, send_message, get_object
-from src.services.redis import set_cache, get_cache
-
 tasks_path = 'data-collector/tasks.json'
 
 
@@ -27,7 +25,13 @@ def get_tasks():
     if (len(tasks) == 0):
         return []
 
-    return [get_cache(['task', task['id']]) for task in tasks]
+    _tasks = []
+
+    for task in tasks:
+        _task = get_object('/'.join(['output', task['id'], 'result.json']))
+        _tasks.append(json.loads(_task) if _task is not None else task)
+
+    return _tasks
 
 
 # Função que recebe uma url e uma lista de instruções, cria uma task e envia para o 'AWS-SQS' para executar
@@ -43,24 +47,16 @@ def create_task(url: str, steps: list):
     # Envia mensagem para o SQS
     send_message(task)
 
-    # Adiciona a task no cache do Redis para outras rotas utilizarem de sua informação
-    set_cache({
-        'id': task['id'],
-        'url': url,
-        'complete': False
-    },
-        ['task', task['id']]
-    )
-
     # Adiciona a task mais recente junto com as ultimas 4 solicitadas
     update_task_file(task)
 
     return task
 
 
-# Função que procura e retorna uma task no Redis a partir do seu ID
+# Função que procura e retorna uma task no S3 a partir do seu ID
 def get_single_task(id: str):
-    task = get_cache(['task', id])
+    task = get_object(
+        '/'.join(['data-collector', 'output', id, 'result.json']))
 
     task['files'] = [
         '/'.join([os.getenv('API_URL'), 'task', file]) for file in task['files']]

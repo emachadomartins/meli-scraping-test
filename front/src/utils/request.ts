@@ -13,7 +13,4 @@ export const request = async <T>(
     withCredentials: true,
     method,
     data: body,
-  }).then(({ data }) => {
-    console.log(data);
-    return data as T;
-  });
+  }).then(({ data }) => data as T);

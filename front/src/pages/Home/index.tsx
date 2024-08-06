@@ -12,10 +12,6 @@ export function Home() {
     handleTasks();
   }, []);
 
-  useEffect(() => {
-    setTimeout(() => handleTasks(), 10000);
-  }, [tasks]);
-
   const handleTasks = () => {
     request<{ tasks: Task[] }>("/task")
       .then(({ tasks }) => setTasks(tasks))
@@ -26,13 +22,10 @@ export function Home() {
     request("/task", "post", {
       message: {
         url,
-        steps: JSON.parse(steps),
+        steps: [],
       },
     }).then(() => {
-      let i = 0;
-      while (i < 10) {
-        handleTasks();
-      }
+      handleTasks();
     });
   };
 
@@ -79,7 +72,7 @@ export function Home() {
             <h3>Ultimas tasks</h3>
 
             <ul className="tasks">
-              {tasks.map(({ id, url, complete, error }) => (
+              {tasks.map(({ id, url, complete, error, info = {}, files }) => (
                 <li className="task" key={id}>
                   <h3>{id}</h3>
                   <p>
@@ -103,9 +96,23 @@ export function Home() {
                   {!complete ? (
                     <></>
                   ) : (
-                    <button className="button" onClick={handleSubmit}>
-                      Ver Resultado
-                    </button>
+                    <>
+                      <p className="title">Resultados</p>
+                      {Object.entries(info).map(([key, value]) => (
+                        <div className="input-box">
+                          <p>
+                            {typeof value === "object"
+                              ? JSON.stringify(value)
+                              : `${value}`}
+                          </p>
+                          <label>{key}</label>
+                        </div>
+                      ))}
+                      <p className="title">Arquivos</p>
+                      {files?.map((file) => (
+                        <a href={file}>{file}</a>
+                      ))}
+                    </>
                   )}
                 </li>
               ))}

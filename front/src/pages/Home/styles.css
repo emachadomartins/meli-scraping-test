@@ -48,6 +48,7 @@
   background-color: #000000;
   color: #61dafb;
   border-color: #61dafb;
+  margin-horizontal: 20px;
 }
 .button:active,
 .button:focus {

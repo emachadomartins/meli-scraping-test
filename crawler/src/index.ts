@@ -1,6 +1,6 @@
-import { BrowserService, RedisService } from "./services";
+import { BrowserService } from "./services";
 import { Result, Task } from "./types";
-import { isDev, uploadFiles } from "./utils";
+import { uploadFiles } from "./utils";
 
 // Função que chama o BrowserService, espera a conclusão da execução e sobe os resultados no S3+Redis
 export const handleTask = async (
@@ -21,8 +21,6 @@ export const handleTask = async (
 
     if (files.length && (complete || retry > 5)) {
       await uploadFiles(files, id);
-
-      await RedisService.set(result, "task", id);
     } else if (!complete && retry <= 5) {
       throw new Error(error ?? "unknown error");
     }
