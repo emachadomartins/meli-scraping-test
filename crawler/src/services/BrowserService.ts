@@ -52,6 +52,8 @@ export class BrowserService {
 
     let i = 0;
 
+    await this.exportFile(JSON.stringify(_steps), "steps.json");
+
     for (const step of _steps) {
       try {
         this.log = `Starting step [${i}-${step.step}]`;
@@ -75,6 +77,9 @@ export class BrowserService {
             break;
           case "export":
             await this.export(step.name);
+            break;
+          case "file":
+            await this.file(step.type, step.selector);
             break;
           case "captcha":
             await this.captcha(
@@ -122,7 +127,7 @@ export class BrowserService {
   // Função que valida se já existe uma instancia de browser criada, e caso não, cria e retorna
   private async getBrowser(): Promise<Browser> {
     if (this.#browser) return this.#browser;
-    const browser = await launch({ headless: !isDev });
+    const browser = await launch({ headless: !isDev, args: ["--no-sandbox"] });
     this.#browser = browser;
     return browser;
   }
@@ -421,7 +426,7 @@ export class BrowserService {
           useEval ? eval(selector) : document.querySelector(selector)
         ) as HTMLElement;
         if (!element) throw new Error(`Element '${selector}' not found`);
-        return element.getAttribute("src");
+        return element.getAttribute("src") ?? element.getAttribute("href");
       },
       fileSelector,
       isQuerySelector(fileSelector)
@@ -459,10 +464,72 @@ export class BrowserService {
 
     // Insere o resultado da resolução em um input a partir de um seletor
     await page.focus(responseSelector);
-    await page.keyboard.type(resolution.text);
+    await page.keyboard.type(resolution);
 
     await this.wait(1000);
     await this.exportFile(file, fileName);
+  }
+
+  // Função que recebe seletor, procura um arquivo, baixa e envia para a conversão de texto
+  private async file(type: string, selector: string) {
+    if (!type) throw new Error("No captcha type provided");
+    if (!selector) throw new Error("No selector provided");
+
+    const page = await this.getPage();
+    const client = await page.createCDPSession();
+
+    // muda o diretório padrão de download de arquivos do Browser
+    await client.send("Page.setDownloadBehavior", {
+      behavior: "allow",
+      downloadPath: this.resultPath,
+    });
+
+    // Pega a url de um arquivo a partir de um seletor
+    const url = await page.evaluate(
+      (selector: string, useEval: boolean) => {
+        const element = (
+          useEval ? eval(selector) : document.querySelector(selector)
+        ) as HTMLElement;
+        if (!element) throw new Error(`Element '${selector}' not found`);
+        return element.getAttribute("src") ?? element.getAttribute("href");
+      },
+      selector,
+      isQuerySelector(selector)
+    );
+
+    // Estoura erro caso o seletor não retorne url
+    if (!url) throw new Error(`No file found in selector '${selector}'`);
+    await this.wait(1000);
+
+    // Cria um elemento <a> no html, insere as informações de download nele e clica para baixar um arquivo na memoria
+    await page.evaluate(
+      (url: string, type: string) => {
+        const anchor = document.createElement("a") as HTMLElement;
+        anchor.setAttribute("download", `file.${type}`);
+        anchor.setAttribute(
+          "href",
+          url.startsWith(location.protocol)
+            ? url
+            : `${location.protocol}//${location.host}/${url}`
+        );
+        anchor.click();
+      },
+      url,
+      type
+    );
+
+    await this.wait(2000);
+
+    // Envia o arquivo para a resolução
+    const { resolution, file, fileName } = await convertFile(
+      this.resultPath,
+      "file",
+      "pdf"
+    );
+
+    await this.wait(1000);
+    await this.exportFile(file, fileName);
+    this.#info["file"] = resolution;
   }
 
   // Função que espera um tempo passado em milisegundos

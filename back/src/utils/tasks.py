@@ -28,8 +28,10 @@ def get_tasks():
     _tasks = []
 
     for task in tasks:
-        _task = get_object('/'.join(['output', task['id'], 'result.json']))
-        _tasks.append(json.loads(_task) if _task is not None else task)
+        _task = get_object(
+            '/'.join(['data-collector', 'output', task['id'], 'result.json']))
+        _task = json.loads(_task) if _task is not None else task
+        _tasks.append(_task)
 
     return _tasks
 

@@ -4,7 +4,7 @@ services:
     env_file: './crawler/.env'
     build: ./crawler
     environment:
-      - SQS_QUEUE_URL=${SQS_QUEUE_URL}
+      - QUEUE_URL=${QUEUE_URL}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION}

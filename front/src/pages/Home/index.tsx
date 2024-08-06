@@ -3,6 +3,8 @@ import { Task } from "../../types";
 import { request } from "../../utils";
 import "./styles.css";
 
+const API = process.env.REACT_APP_API_URL;
+
 export function Home() {
   const [url, setUrl] = useState("");
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -22,7 +24,7 @@ export function Home() {
     request("/task", "post", {
       message: {
         url,
-        steps: [],
+        steps: JSON.parse(steps),
       },
     }).then(() => {
       handleTasks();
@@ -75,42 +77,49 @@ export function Home() {
               {tasks.map(({ id, url, complete, error, info = {}, files }) => (
                 <li className="task" key={id}>
                   <h3>{id}</h3>
-                  <p>
-                    Url: <a href={url}>{url}</a>
-                  </p>
-                  <p>
-                    Status:
-                    <p
-                      className={
-                        complete ? "complete" : error ? "error" : "status"
-                      }
-                    >
-                      {complete
-                        ? "Completo"
-                        : error
-                        ? "Error"
-                        : "Em processamento..."}
-                    </p>
+                  <p className="title">Url:</p>
+                  <a href={url}>{url}</a>
+                  <p className="title">Status:</p>
+                  <p
+                    className={
+                      complete ? "complete" : error ? "error" : "status"
+                    }
+                  >
+                    {complete
+                      ? "Completo"
+                      : error
+                      ? "Error"
+                      : "Em processamento..."}
                   </p>
                   {!error ? <></> : <p className="error">{error}</p>}
                   {!complete ? (
                     <></>
                   ) : (
                     <>
-                      <p className="title">Resultados</p>
+                      {Object.keys(info).length ? (
+                        <p className="title">Resultados</p>
+                      ) : (
+                        <></>
+                      )}
                       {Object.entries(info).map(([key, value]) => (
-                        <div className="input-box">
-                          <p>
+                        <div className="attr-box">
+                          <div className="attr-key">{key}</div>
+                          <div className="attr-val">
                             {typeof value === "object"
                               ? JSON.stringify(value)
                               : `${value}`}
-                          </p>
-                          <label>{key}</label>
+                          </div>
                         </div>
                       ))}
-                      <p className="title">Arquivos</p>
+                      {files?.length ? (
+                        <p className="title">Arquivos</p>
+                      ) : (
+                        <></>
+                      )}
                       {files?.map((file) => (
-                        <a href={file}>{file}</a>
+                        <a className="link" href={`${API}task/${file}`}>
+                          {file.split("/")[1]}
+                        </a>
                       ))}
                     </>
                   )}

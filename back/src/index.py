@@ -23,7 +23,7 @@ def health_check():
 # Cria a rota '/text' que faz a conversão de arquivos para texto [imagens, audios e pdf]
 # Metodo aceito [PUT]
 @app.route('/text', methods=['PUT'])
-def text():
+def text_converter():
     try:
         # Valida se existe arquivo na requisição e caso não, estoura erro
         if not 'file' in request.files:

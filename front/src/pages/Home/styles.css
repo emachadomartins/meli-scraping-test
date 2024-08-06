@@ -146,8 +146,13 @@
   font-size: 14px;
 }
 
+.tasks .task .title {
+  font-size: 16px;
+}
+
 .tasks .task a {
   color: #03e9f4;
+  font-size: 14px;
 }
 
 .tasks .task .complete {
@@ -158,4 +163,31 @@
 .tasks .task .error {
   color: red;
   font-weight: bolder;
+}
+
+.tasks .task .title {
+  color: #03e9f4;
+  font-weight: bolder;
+}
+
+.tasks .task .attr-box {
+  font-size: 14px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  margin: 10px;
+  overflow: hidden;
+  text-align: center;
+  /* text-overflow: clip; */
+  /* white-space: nowrap; */
+}
+
+.tasks .task .attr-key {
+  font-weight: bolder;
+  width: 150px;
+}
+
+.tasks .task .attr-val {
+  width: 400px;
 }

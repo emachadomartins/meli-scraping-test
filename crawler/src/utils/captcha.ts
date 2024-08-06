@@ -9,7 +9,8 @@ export const convertFile = async (
 ) => {
   const _fileName = await FileService.readdir(path).then(
     (files) =>
-      files.find(({ name }) => name.includes(`${fileName}_${fileType}`))?.name
+      files.find(({ name }) => name.includes(`${fileName}_${fileType}`))
+        ?.name ?? files.find(({ name }) => name.includes(`.${fileType}`))?.name
   );
 
   if (!_fileName) throw new Error("No file downloaded");
@@ -22,12 +23,14 @@ export const convertFile = async (
 
   const formData = new FormData();
 
-  formData.append("file_name", fileName);
+  formData.append("file_name", _fileName);
   formData.append("file_type", fileType);
   formData.append("file", new Blob([file]), fileName);
 
-  const response = await RequestService.send<{ text: string }>({
-    url: "http://localhost:5000/text",
+  const url = process.env["API_URL"] + "text";
+
+  const response = await RequestService.send<{ result: string }>({
+    url,
     method: "PUT",
     form: formData,
     headers: {
@@ -36,7 +39,7 @@ export const convertFile = async (
   });
 
   return {
-    resolution: response,
+    resolution: response.result,
     file,
     fileName: `${fileName}_${fileType}.${extension}`,
   };

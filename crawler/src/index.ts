@@ -8,14 +8,14 @@ export const handleTask = async (
   onSuccess: (result: Result) => Promise<void>,
   onError: (error: Error | string) => Promise<void>
 ) => {
-  const { url, scripts, retry = 0, id } = task;
+  const { url, steps, retry = 0, id } = task;
 
   console.log(`Starting scraping '${url}'`);
 
   try {
     const browser = new BrowserService(task.id, url, retry);
 
-    const result = await browser.execute(scripts);
+    const result = await browser.execute(steps);
 
     const { complete, error, files = [] } = result;
 

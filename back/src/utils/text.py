@@ -10,7 +10,7 @@ from PIL import Image
 # Função executada que converte pdf em texto utilizando as libs 'pdf2image' e 'pytesseract'
 def solve_pdf(path):
     pages = convert_from_path(path, 500)
-    return [pytesseract.image_to_string(page) for page in pages]
+    return ''.join([pytesseract.image_to_string(page) for page in pages])
 
 
 # Função executada que converte audio em texto utilizando a lib 'whisper'
@@ -18,7 +18,7 @@ def solve_audio(path):
     model = whisper.load_model('base')
     result = model.transcribe(path)
 
-    return ''.join(result['text'].replace(' ', '').split(','))
+    return ''.join(result['text'].replace(' ', '').replace('.', '').split(','))
 
 
 # Função executada que converte imagem em texto utilizando a lib 'pytesseract'
@@ -30,7 +30,6 @@ def solve_image(path):
 
 # Função que recebe o arquivo e verifica qual conversão será feita
 def text_converter(file, file_type: str, file_name: str):
-
     # Salva o arquivo recebido na memoria (Pasta 'input')
     id = uuid()
     extension = file_name.split('.')[1]
@@ -43,7 +42,7 @@ def text_converter(file, file_type: str, file_name: str):
     elif file_type == 'image':
         resolution = solve_image(path=path)
     elif file_type == 'pdf':
-        resolution = solve_image(path=path)
+        resolution = solve_pdf(path=path)
     else:
         raise Exception('Unsupported file_type')
 
